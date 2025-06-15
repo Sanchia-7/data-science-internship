@@ -142,6 +142,12 @@ export default function SalaryDashboard() {
           >
             Salary Predictor
           </Button>
+            <Button
+            variant="outline"
+            onClick={() => window.open("https://www.kaggle.com/datasets/arnabchaki/data-science-salaries-2023", "_blank")}
+            >
+            Data
+            </Button>
         </div>
       </div>
 
