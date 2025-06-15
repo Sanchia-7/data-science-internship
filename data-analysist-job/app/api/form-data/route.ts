@@ -1,12 +1,11 @@
 import { NextResponse } from "next/server"
 import { parseCSV } from "@/lib/data-utils"
-   import { promises as fs } from "fs"
+import { promises as fs } from "fs"
 import path from "path"
 export async function GET() {
   try {
     const filePath = path.resolve(process.cwd(), "public/data/salaries.csv")
-const csvText = await fs.readFile(filePath, "utf-8")
-
+    const csvText = await fs.readFile(filePath, "utf-8")
     const data = parseCSV(csvText)
 
     const formData = {
