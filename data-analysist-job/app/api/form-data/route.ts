@@ -8,6 +8,7 @@ export async function GET() {
     const csvText = await fs.readFile(filePath, "utf-8")
     const data = parseCSV(csvText)
 
+    
     const formData = {
       job_titles: [...new Set(data.map((r) => r.job_title))].filter(Boolean).sort(),
       company_locations: [...new Set(data.map((r) => r.company_location))].filter(Boolean).sort(),
