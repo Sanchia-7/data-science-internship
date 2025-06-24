@@ -69,7 +69,7 @@ export async function POST(request: NextRequest) {
       body
 
     // Create a more robust prediction script
-    const predictionScript = `
+    const predictionScript = `\
 import sys
 import os
 import joblib
@@ -108,14 +108,13 @@ def main():
         
         # Prepare input data - match exact feature order from training
         input_features = [
-    ${category},       # Category
-    ${city},           # City
-    ${region},         # Region
-    ${profitMargin * 100},  # Profit as absolute value estimate (optional scaling)
-    ${discount}  ,      # Discount
-    ${subCategory},    # SubCategory
-]
-
+            ${category},       # Category
+            ${city},           # City
+            ${region},         # Region
+            ${profitMargin * 100},  # Profit as absolute value estimate (optional scaling)
+            ${discount}  ,      # Discount
+            ${subCategory},    # SubCategory
+        ]
         
         input_data = np.array([input_features])
         print(f"Input data shape: {input_data.shape}")
@@ -157,14 +156,17 @@ if __name__ == "__main__":
     main()
 `
 
-    // Write temporary script
-    const scriptPath = path.resolve(projectRoot, "temp_predict.py")
-    fs.writeFileSync(scriptPath, predictionScript)
+    // Use '/tmp' for serverless environments (e.g., AWS Lambda or Vercel)
+    const tempDir = process.env.LAMBDA_TASK_ROOT || '/tmp';
+    const scriptPath = path.resolve(tempDir, 'temp_predict.py');  // Write to /tmp directory
+
+    // Write temporary Python script
+    fs.writeFileSync(scriptPath, predictionScript);
     console.log("Temporary script written to:", scriptPath)
 
     // Execute Python script
     return new Promise((resolve) => {
-      const python = spawn("python", [scriptPath], {
+      const python = spawn("python3", [scriptPath], {
         cwd: projectRoot,
         env: { ...process.env, PYTHONPATH: projectRoot },
       })
