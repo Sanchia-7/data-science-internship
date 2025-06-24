@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import * as ort from "onnxruntime-node"; // Import ONNX Runtime
+import * as ort from "onnxruntime-node"; // Import ONNX Runtime for Node.js
 import path from "path";
 
 // Endpoint for prediction
@@ -37,7 +37,7 @@ export async function POST(request: NextRequest) {
     // Log the available output tensors
     console.log("Model outputs:", results);
 
-    // Check if 'variable' tensor exists and access its data
+    // Access the 'variable' output tensor
     const predictionTensor = results.variable;
     if (!predictionTensor) {
       throw new Error("Model did not return 'variable' tensor");
@@ -48,7 +48,7 @@ export async function POST(request: NextRequest) {
     console.log("Raw prediction:", prediction);
 
     // Apply bounds to the prediction
-    const boundedPrediction = Math.min(Math.max(prediction, 100), 100000);  // Ensuring prediction is between 100 and 100000
+    const boundedPrediction = Math.min(Math.max(prediction, 100), 100000);
 
     // Return the result
     return NextResponse.json({
