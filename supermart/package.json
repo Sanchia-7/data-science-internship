@@ -50,6 +50,7 @@
     "lucide-react": "^0.454.0",
     "next": "^15.2.4",
     "next-themes": "^0.4.4",
+    "onnxruntime-node": "^1.22.0-rev",
     "papaparse": "^5.5.3",
     "path": "latest",
     "react": "^19",
