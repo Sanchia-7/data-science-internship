@@ -10,9 +10,9 @@ export async function POST(request: NextRequest) {
 
     // Get absolute paths
     const projectRoot = process.cwd()
-    const modelPath = path.resolve(projectRoot, "models", "xgb_model.pkl")
-    const scalerPath = path.resolve(projectRoot, "models", "scaler.pkl")
-    const encodersPath = path.resolve(projectRoot, "models", "label_encoders.pkl")
+    const modelPath = path.resolve(projectRoot, "models", "xgb_model.onnx")  // Ensure ONNX model is used
+    const scalerPath = path.resolve(projectRoot, "models", "scaler.onnx")  // Scaler in .pkl
+    const encodersPath = path.resolve(projectRoot, "models", "label_encoders.pkl")  // Encoders in .pkl
 
     console.log("Checking paths:")
     console.log("Model path:", modelPath)
@@ -31,8 +31,8 @@ export async function POST(request: NextRequest) {
 
     if (!modelExists || !scalerExists || !encodersExists) {
       const missingFiles = []
-      if (!modelExists) missingFiles.push("xgb_model.pkl")
-      if (!scalerExists) missingFiles.push("scaler.pkl")
+      if (!modelExists) missingFiles.push("xgb_model.onnx")
+      if (!scalerExists) missingFiles.push("scaler.onnx")
       if (!encodersExists) missingFiles.push("label_encoders.pkl")
 
       // Try to list what's actually in the models directory
@@ -72,6 +72,7 @@ export async function POST(request: NextRequest) {
     const predictionScript = `\
 import sys
 import os
+import onnxruntime as ort
 import joblib
 import numpy as np
 import json
@@ -84,7 +85,7 @@ def main():
         encoders_path = r"${encodersPath.replace(/\\/g, "/")}"
         
         print(f"Python working directory: {os.getcwd()}")
-        print(f"Loading model from: {model_path}")
+        print(f"Loading ONNX model from: {model_path}")
         print(f"Loading scaler from: {scaler_path}")
         print(f"Loading encoders from: {encoders_path}")
         
@@ -96,52 +97,47 @@ def main():
         if not os.path.exists(encoders_path):
             raise FileNotFoundError(f"Encoders file not found: {encoders_path}")
         
-        # Load models
-        print("Loading XGBoost model...")
-        model = joblib.load(model_path)
-        print("Loading scaler...")
-        scaler = joblib.load(scaler_path)
-        print("Loading encoders...")
-        encoders = joblib.load(encoders_path)
-        
-        print("All models loaded successfully")
-        
+        # Load ONNX model using ONNX Runtime
+        sess = ort.InferenceSession(model_path)
+
+        print("Model loaded successfully with ONNX Runtime")
+
         # Prepare input data - match exact feature order from training
         input_features = [
             ${category},       # Category
             ${city},           # City
             ${region},         # Region
             ${profitMargin * 100},  # Profit as absolute value estimate (optional scaling)
-            ${discount}  ,      # Discount
+            ${discount},       # Discount
             ${subCategory},    # SubCategory
         ]
-        
-        input_data = np.array([input_features])
-        print(f"Input data shape: {input_data.shape}")
+
+        input_data = np.array([input_features], dtype=np.float32)  # Ensure input is in float32 format
         print(f"Input features: {input_features}")
-        
-        # Scale the input
-        input_scaled = scaler.transform(input_data)
-        print(f"Scaled input shape: {input_scaled.shape}")
-        
-        # Make prediction
-        prediction = model.predict(input_scaled)[0]
+        print(f"Input data shape: {input_data.shape}")
+
+        # Run inference with ONNX Runtime
+        inputs = {sess.get_inputs()[0].name: input_data}
+        outputs = sess.run(None, inputs)
+
+        # Get prediction result (first output)
+        prediction = outputs[0][0]
         print(f"Raw prediction: {prediction}")
-        
+
         # Ensure positive prediction and reasonable bounds
         prediction = max(prediction, 100)  # Minimum ₹100
         prediction = min(prediction, 100000)  # Maximum ₹100,000
-        
+
         result = {
             'prediction': float(prediction),
             'success': True,
             'input_features': input_features,
-            'model_type': str(type(model).__name__)
+            'model_type': 'XGBRegressor (ONNX)'
         }
-        
+
         print("PREDICTION_RESULT:", json.dumps(result))
         return result
-        
+
     except Exception as e:
         import traceback
         error_result = {
@@ -156,9 +152,11 @@ if __name__ == "__main__":
     main()
 `
 
-    // Use '/tmp' for serverless environments (e.g., AWS Lambda or Vercel)
-    const tempDir = process.env.LAMBDA_TASK_ROOT || '/tmp';
-    const scriptPath = path.resolve(tempDir, 'temp_predict.py');  // Write to /tmp directory
+    // Use a temporary directory, falling back to '/tmp' for serverless environments
+    const tempDir = process.env.LAMBDA_TASK_ROOT || path.join(process.cwd(), "tmp");  // Fallback to a 'tmp' directory
+    if (!fs.existsSync(tempDir)) fs.mkdirSync(tempDir);  // Ensure the temp directory exists
+    
+    const scriptPath = path.resolve(tempDir, 'temp_predict.py');  // Write to temp directory
 
     // Write temporary Python script
     fs.writeFileSync(scriptPath, predictionScript);
@@ -166,7 +164,7 @@ if __name__ == "__main__":
 
     // Execute Python script
     return new Promise((resolve) => {
-      const python = spawn("python3", [scriptPath], {
+      const python = spawn("python", [scriptPath], {  // Use "python" instead of "python3"
         cwd: projectRoot,
         env: { ...process.env, PYTHONPATH: projectRoot },
       })

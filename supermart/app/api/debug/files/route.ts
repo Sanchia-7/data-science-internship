@@ -17,8 +17,8 @@ export async function GET() {
     "data/processed/subcategories_sales_by_category.json",
     "data/processed/subcategory_by_category.json",
     "data/processed/model_metrics.json",
-    "models/xgb_model.pkl",
-    "models/scaler.pkl",
+    "models/xgb_model.onnx",
+    "models/scaler.onnx",
     "models/label_encoders.pkl",
   ]
 
@@ -68,13 +68,22 @@ export async function GET() {
     }
   }
 
-  // Check directories
+  // Check directories and list file details (size, modified time)
   const requiredDirs = ["data", "data/processed", "models", "scripts"]
   for (const dirPath of requiredDirs) {
     const fullPath = path.join(process.cwd(), dirPath)
     try {
       if (fs.existsSync(fullPath)) {
-        const files = fs.readdirSync(fullPath)
+        const files = fs.readdirSync(fullPath).map(file => {
+          const filePath = path.join(fullPath, file)
+          const stats = fs.statSync(filePath)
+          return {
+            name: file,
+            size: stats.size,
+            modified: stats.mtime.toISOString(),
+            fullPath: filePath,
+          }
+        })
         debug.directories[dirPath] = {
           exists: true,
           files: files,

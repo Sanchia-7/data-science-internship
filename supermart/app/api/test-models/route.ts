@@ -4,13 +4,16 @@ import fs from "fs"
 
 export async function GET() {
   try {
+    // Get the root directory of the project
     const projectRoot = process.cwd()
     console.log("Project root:", projectRoot)
 
-    const modelPath = path.resolve(projectRoot, "models", "xgb_model.pkl")
-    const scalerPath = path.resolve(projectRoot, "models", "scaler.pkl")
+    // Define the paths to the model files
+    const modelPath = path.resolve(projectRoot, "models", "xgb_model.onnx")
+    const scalerPath = path.resolve(projectRoot, "models", "scaler.onnx")
     const encodersPath = path.resolve(projectRoot, "models", "label_encoders.pkl")
 
+    // Initialize the result object with model information
     const result = {
       projectRoot,
       paths: {
@@ -30,7 +33,7 @@ export async function GET() {
       },
     }
 
-    // Get file sizes if they exist
+    // Get file sizes for each model if they exist
     if (result.exists.model) {
       result.sizes.model = fs.statSync(modelPath).size
     }
@@ -41,15 +44,17 @@ export async function GET() {
       result.sizes.encoders = fs.statSync(encodersPath).size
     }
 
-    // Check models directory
+    // Check if the models directory exists and list its contents
     const modelsDir = path.resolve(projectRoot, "models")
     if (fs.existsSync(modelsDir)) {
       result.modelsDirectory.exists = true
       result.modelsDirectory.files = fs.readdirSync(modelsDir)
     }
 
+    // Return the result object as JSON
     return NextResponse.json(result)
   } catch (error) {
+    // If there's an error, return an error message
     return NextResponse.json(
       {
         error: error.message,
