@@ -1,0 +1,39 @@
+{
+  "Bakery": [
+    "Biscuits",
+    "Cakes",
+    "Breads & Buns"
+  ],
+  "Beverages": [
+    "Health Drinks",
+    "Soft Drinks"
+  ],
+  "Eggs, Meat & Fish": [
+    "Eggs",
+    "Chicken",
+    "Mutton",
+    "Fish"
+  ],
+  "Food Grains": [
+    "Atta & Flour",
+    "Organic Staples",
+    "Dals & Pulses",
+    "Rice"
+  ],
+  "Fruits & Veggies": [
+    "Fresh Vegetables",
+    "Fresh Fruits",
+    "Organic Vegetables",
+    "Organic Fruits"
+  ],
+  "Oil & Masala": [
+    "Masalas",
+    "Edible Oil & Ghee",
+    "Spices"
+  ],
+  "Snacks": [
+    "Chocolates",
+    "Cookies",
+    "Noodles"
+  ]
+}
