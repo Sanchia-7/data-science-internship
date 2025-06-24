@@ -11,7 +11,7 @@ export async function POST(request: NextRequest) {
     // Get absolute paths
     const projectRoot = process.cwd()
     const modelPath = path.resolve(projectRoot, "models", "xgb_model.onnx")  // Ensure ONNX model is used
-    const scalerPath = path.resolve(projectRoot, "models", "scaler.onnx")  // Scaler in .pkl
+    const scalerPath = path.resolve(projectRoot, "models", "scaler.onnx")  // Scaler in .onxx
     const encodersPath = path.resolve(projectRoot, "models", "label_encoders.pkl")  // Encoders in .pkl
 
     console.log("Checking paths:")
@@ -152,11 +152,12 @@ if __name__ == "__main__":
     main()
 `
 
-    // Use a temporary directory, falling back to '/tmp' for serverless environments
-    const tempDir = process.env.LAMBDA_TASK_ROOT || path.join(process.cwd(), "tmp");  // Fallback to a 'tmp' directory
-    if (!fs.existsSync(tempDir)) fs.mkdirSync(tempDir);  // Ensure the temp directory exists
-    
-    const scriptPath = path.resolve(tempDir, 'temp_predict.py');  // Write to temp directory
+    // Use '/tmp' for serverless environments (e.g., AWS Lambda or Vercel)
+    const tempDir = process.env.LAMBDA_TASK_ROOT || '/tmp';  // Fallback to '/tmp' if running on Vercel or AWS Lambda
+    const scriptPath = path.resolve(tempDir, 'temp_predict.py');  // Write to /tmp directory
+
+    // Ensure the '/tmp' directory exists and create the Python script in that directory
+    if (!fs.existsSync(tempDir)) fs.mkdirSync(tempDir, { recursive: true });  // Create directory if it doesn't exist
 
     // Write temporary Python script
     fs.writeFileSync(scriptPath, predictionScript);
@@ -164,7 +165,7 @@ if __name__ == "__main__":
 
     // Execute Python script
     return new Promise((resolve) => {
-      const python = spawn("python", [scriptPath], {  // Use "python" instead of "python3"
+      const python = spawn("python", [scriptPath], {
         cwd: projectRoot,
         env: { ...process.env, PYTHONPATH: projectRoot },
       })
