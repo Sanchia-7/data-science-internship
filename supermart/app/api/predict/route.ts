@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import * as ort from "onnxruntime-node"; // Import ONNX Runtime for Node.js
 import path from "path";
+import fs from "fs";
 
 // Endpoint for prediction
 export async function POST(request: NextRequest) {
@@ -19,22 +20,28 @@ export async function POST(request: NextRequest) {
       body.subCategory        // SubCategory
     ];
 
-    // Ensure input features are in the expected format for the model
     const input_data = new ort.Tensor('float32', new Float32Array(input_features), [1, input_features.length]);
 
-    // Load the ONNX model (from the models folder)
-    const modelPath = path.resolve(process.cwd(), "models", "xgb_model.onnx");
+    // Load the ONNX model and scaler from the public directory
+    const modelPath = path.resolve(process.cwd(), "public", "models", "xgb_model.onnx");
+    const scalerPath = path.resolve(process.cwd(), "public", "models", "scaler.onnx");
 
-    // Run inference using ONNX Runtime
-    const session = await ort.InferenceSession.create(modelPath);
+    // Check if the model and scaler files exist in the public directory
+    if (!fs.existsSync(modelPath) || !fs.existsSync(scalerPath)) {
+      return NextResponse.json(
+        { success: false, error: "Model or scaler file is missing" },
+        { status: 500 }
+      );
+    }
+
+    // Run inference using ONNX Runtime for model
+    const modelSession = await ort.InferenceSession.create(modelPath);
 
     // Prepare the input tensor for the model
-    const feeds = { input: input_data }; // Ensure the input name matches your model's expected input name
+    const feeds = { input: input_data };
 
     // Get the model outputs
-    const results = await session.run(feeds);
-
-    // Log the available output tensors
+    const results = await modelSession.run(feeds);
     console.log("Model outputs:", results);
 
     // Access the 'variable' output tensor
@@ -50,7 +57,6 @@ export async function POST(request: NextRequest) {
     // Apply bounds to the prediction
     const boundedPrediction = Math.min(Math.max(prediction, 100), 100000);
 
-    // Return the result
     return NextResponse.json({
       success: true,
       prediction: boundedPrediction,
